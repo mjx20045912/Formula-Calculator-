@@ -1,0 +1,97 @@
+name: Java Formula Calculator Tests
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'java/**'
+      - '.github/workflows/java-test.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'java/**'
+      - '.github/workflows/java-test.yml'
+
+jobs:
+  test:
+    name: Test Java Formula Calculator
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        java-version: [17, 20, 21]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java ${{ matrix.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+        cache: 'maven'
+        cache-dependency-path: java/pom.xml
+
+    - name: Install dependencies
+      run: |
+        cd java
+        mvn dependency:resolve
+
+    - name: Compile
+      run: |
+        cd java
+        mvn clean compile
+
+    - name: Run tests
+      run: |
+        cd java
+        mvn test
+      env:
+        CI: true
+
+    - name: Run example
+      run: |
+        cd java
+        mvn exec:java -Dexec.mainClass="com.formulacalculator.FormulaCalculator" -q
+
+    - name: Build JAR
+      run: |
+        cd java
+        mvn clean package -DskipTests
+
+    - name: Test JAR execution
+      run: |
+        cd java
+        java -cp target/formula-calculator-1.0.0.jar com.formulacalculator.FormulaCalculator
+
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'maven'
+        cache-dependency-path: java/pom.xml
+
+    - name: Install dependencies
+      run: |
+        cd java
+        mvn dependency:resolve
+
+    - name: Security audit
+      run: |
+        cd java
+        mvn dependency:check || echo "Security audit completed with warnings"
+
+    - name: Check for known vulnerabilities
+      run: |
+        cd java
+        mvn dependency:check || exit 1 
