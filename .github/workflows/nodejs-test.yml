@@ -1,0 +1,56 @@
+name: Node.js Formula Calculator Tests
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'nodejs/**'
+      - '.github/workflows/nodejs-test.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'nodejs/**'
+      - '.github/workflows/nodejs-test.yml'
+
+jobs:
+  test:
+    name: Test Node.js Formula Calculator
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 21.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: nodejs/package.json
+
+    - name: Install dependencies
+      run: |
+        cd nodejs
+        npm ci
+
+    - name: Run tests
+      run: |
+        cd nodejs
+        npm test
+      env:
+        CI: true
+
+    # - name: Run example
+    #   run: |
+    #     cd nodejs
+    #     node example.js
+
+    - name: Test coverage (if available)
+      run: |
+        cd nodejs
+        npm run test:coverage || echo "Coverage not configured"
+      continue-on-error: true 

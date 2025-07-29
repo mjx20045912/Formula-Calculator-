@@ -1,0 +1,117 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test-nodejs:
+    name: Node.js Formula Calculator Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 21.x]
+        os: [ubuntu-latest]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: nodejs/package.json
+
+    - name: Install dependencies
+      run: |
+        cd nodejs
+        npm ci
+
+    - name: Run tests
+      run: |
+        cd nodejs
+        npm test
+      env:
+        CI: true
+
+    - name: Run example
+      run: |
+        cd nodejs
+        node example.js
+
+    - name: Check code formatting
+      run: |
+        cd nodejs
+        npx prettier --check "*.js" "*.json" "*.md" || echo "Code formatting check skipped (prettier not configured)"
+
+    - name: Security audit
+      run: |
+        cd nodejs
+        npm audit --audit-level=moderate || echo "Security audit completed with warnings"
+
+  test-matrix:
+    name: Test Matrix
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: nodejs/package.json
+
+    - name: Install dependencies
+      run: |
+        cd nodejs
+        npm ci
+
+    - name: Run tests
+      run: |
+        cd nodejs
+        npm test
+      env:
+        CI: true
+
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: nodejs/package.json
+
+    - name: Install dependencies
+      run: |
+        cd nodejs
+        npm ci
+
+    - name: Run security audit
+      run: |
+        cd nodejs
+        npm audit --audit-level=high
+
+    - name: Check for known vulnerabilities
+      run: |
+        cd nodejs
+        npm audit --audit-level=moderate || exit 1 

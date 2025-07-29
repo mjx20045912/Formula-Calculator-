@@ -1,0 +1,82 @@
+name: Template Workflow
+
+# This is a template workflow that can be adapted for different projects
+# Copy this file and modify the paths and commands as needed
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**/package.json'
+      - '**/*.js'
+      - '**/*.ts'
+      - '.github/workflows/template.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - '**/package.json'
+      - '**/*.js'
+      - '**/*.ts'
+      - '.github/workflows/template.yml'
+
+jobs:
+  test:
+    name: Test Project
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Find package.json files
+      id: find-packages
+      run: |
+        echo "packages=$(find . -name 'package.json' -not -path './node_modules/*' | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+
+    - name: Install dependencies
+      run: |
+        # Install dependencies for all projects with package.json
+        for pkg in $(find . -name 'package.json' -not -path './node_modules/*'); do
+          echo "Installing dependencies for $(dirname $pkg)"
+          cd $(dirname $pkg)
+          npm ci
+          cd - > /dev/null
+        done
+
+    - name: Run tests
+      run: |
+        # Run tests for all projects with package.json
+        for pkg in $(find . -name 'package.json' -not -path './node_modules/*'); do
+          echo "Running tests for $(dirname $pkg)"
+          cd $(dirname $pkg)
+          if npm run test; then
+            echo "Tests passed for $(dirname $pkg)"
+          else
+            echo "Tests failed for $(dirname $pkg)"
+            exit 1
+          fi
+          cd - > /dev/null
+        done
+      env:
+        CI: true
+
+    - name: Security audit
+      run: |
+        # Run security audit for all projects
+        for pkg in $(find . -name 'package.json' -not -path './node_modules/*'); do
+          echo "Running security audit for $(dirname $pkg)"
+          cd $(dirname $pkg)
+          npm audit --audit-level=moderate || echo "Security audit completed with warnings"
+          cd - > /dev/null
+        done
+      continue-on-error: true 
