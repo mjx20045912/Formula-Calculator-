@@ -1,0 +1,92 @@
+name: C# Formula Calculator Tests
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'C-sharp/**'
+      - '.github/workflows/csharp-test.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'C-sharp/**'
+      - '.github/workflows/csharp-test.yml'
+
+jobs:
+  test:
+    name: Test C# Formula Calculator
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        dotnet-version: ['8.0.x']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET ${{ matrix.dotnet-version }}
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+
+    - name: Restore dependencies
+      run: |
+        cd C-sharp
+        dotnet restore
+
+    - name: Build
+      run: |
+        cd C-sharp
+        dotnet build --no-restore
+
+    - name: Run tests
+      run: |
+        cd C-sharp
+        dotnet test --no-build --verbosity normal
+      env:
+        CI: true
+
+    - name: Run example
+      run: |
+        cd C-sharp
+        dotnet run --no-build
+
+    - name: Build release
+      run: |
+        cd C-sharp
+        dotnet build --configuration Release --no-restore
+
+    - name: Test release executable
+      run: |
+        cd C-sharp
+        dotnet run --configuration Release --no-build
+
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: |
+        cd C-sharp
+        dotnet restore
+
+    - name: Security audit
+      run: |
+        cd C-sharp
+        dotnet list package --vulnerable || echo "Security audit completed"
+
+    - name: Check for known vulnerabilities
+      run: |
+        cd C-sharp
+        dotnet list package --vulnerable || exit 1 
